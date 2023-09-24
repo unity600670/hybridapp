@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    * { margin: 0; padding: 0; }
+    .up { width: 100%; height: 200px; background-color: blue; }
+    .down { height: 400px; display: inline-block; margin: 0 auto; }
+    #down1 { background-color: red; width: 30%; display: inline-block; margin: 0 auto; }
+    #down2 { background-color: green; width: 69%; display: inline-block; margin: 0 auto; }
+    #loginMessage { color: red; text-align: center; }
+    .vertical-buttons { display: flex; flex-direction: column; }
+    .vertical-buttons button { margin: 5px; }
+</style>
+<body>
+    <div>
+        <div class="up">
+            <h1>LOign</h1><br>
+            <div id="nickname" style="display: none;"></div>
+            <form id="loginForm">
+                ID <input type="text" name="id" id="id" placeholder="아이디를 입력해주세요."><br/>
+                PASSWORD <input type="password" name="password" id="password" placeholder="비밀번호를 입력해주세요."><br>
+                <p>
+                    <button type="button" name="login" id="loginButton" onclick="toggleLoginLogout()">Login</button>
+                </p>
+            </form>
+            <div id="loginMessage"></div>
+        </div>
+        <div class="down" id="down1">
+            <div class="vertical-buttons">
+                <button onclick="displayText('he is angry')">버튼 1</button>
+                <button onclick="displayText('he is happy')">버튼 2</button>
+                <button onclick="moveText()">버튼 3</button>
+            </div>
+        </div>
+        <div class="down" id="down2"></div>
+    </div>
+
+    <script>
+        var displayedText = ""; // 텍스트 저장 변수
+        var loggedIn = false;
+
+        function displayText(text) {
+            displayedText = text; // 텍스트 저장
+            document.getElementById("down2").innerText = displayedText; // 텍스트 출력
+        }
+
+        function moveText() {
+            if (displayedText) {
+                document.getElementById("down2").innerText = displayedText; // 저장된 텍스트를 down2로 이동
+                displayedText = ""; // 저장된 텍스트 초기화
+                document.getElementById("loginMessage").innerText = "3번 버튼에 저장되었습니다!!"; // 저장된 텍스트 표시
+            }
+        }
+
+        function toggleLoginLogout() {
+            loggedIn = !loggedIn; // 로그인 상태를 토글
+            var loginButton = document.getElementById("loginButton");
+
+            if (loggedIn) {
+                loginButton.innerText = "Logout";
+                document.getElementById("nickname").innerText = "나의 닉네임: 코딩머신";
+                document.getElementById("nickname").style.display = "block";
+            } else {
+                loginButton.innerText = "Login";
+                document.getElementById("nickname").style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
