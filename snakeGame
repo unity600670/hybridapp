@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        canvas {
+            border: solid 1px;
+        }
+
+        p {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="ByamCanvas" width="1000" height="800"></canvas>
+    <p>Boost: 뱀 길이에 따라 게이지 최대량 변화</p>
+    <p>Snake: 뱀의 길이</p>
+    <p>Obstacle: 현재 생성된 장애물의 갯수 </p>
+    <p>Score: 장애물이 밖으로 나갔을 경우 +10, 뱀 몸통 획득시 +100</p>
+    <script>
+        const canvas = document.getElementById('ByamCanvas');
+        const context = canvas.getContext('2d');
+        var mainInterval;
+        var obInter;
+        var itemInter;
+        var mouseX = 0;
+        var mouseY = 0;
+        var Player = [];
+        var defaultPlayer = 3; // 변경된 부분
+        var speedMu = 1;
+        var count = 0;
+        var boostGauge = 100;
+        var score = 0;
+        var Obstacles = [];
+        var Items = [];
+        var time = "0:00";
+        var timer = 0;
+
+        // 클래스 통합
+        class PlayerBody {
+            constructor(n) {
+                this.PlayerNo = n;
+                this.PosX = canvas.width / 2;
+                this.PosY = canvas.height / 2;
+                if (this.PlayerNo != 0) {
+                    this.PosX = Player[this.PlayerNo - 1].PosX + Player[this.PlayerNo - 1].DirX;
+                    this.PosY = Player[this.PlayerNo - 1].PosY + Player[this.PlayerNo - 1].DirY;
+                }
+                this.DirX = 0;
+                this.DirY = 0;
+                this.Speed = 3;
+                this.Size = 15;
+            }
+            Update(targetX, targetY, distance, speedMultiply) {
+                this.DirX = targetX - this.PosX;
+                this.DirY = targetY - this.PosY;
+                let scalar = Math.sqrt((this.DirX * this.DirX) + (this.DirY * this.DirY));
+                this.DirX = this.DirX / scalar;
+                this.DirY = this.DirY / scalar;
+
+                if (scalar < distance) {
+                    speedMultiply = 0;
+                }
+
+                this.PosX += this.DirX * this.Speed * speedMultiply;
+                this.PosY += this.DirY * this.Speed * speedMultiply;
+            }
+            Draw(color) {
+                context.beginPath();
+                context.arc(this.PosX, this.PosY, this.Size, 0, 2 * Math.PI);
+                context.fillStyle = color;
+                context.fill();
+                context.stroke();
+            }
+        }
+
+        class Obstacle {
+            constructor() {
+                this.StartPos = Math.floor(Math.random() * (5 - 1) + 1);
+                if (this.StartPos == 1) {
+                    this.PosX = Math.random() * canvas.width;
+                    this.PosY = -10;
+                } else if (this.StartPos == 2) {
+                    this.PosX = canvas.width + 10;
+                    this.PosY = Math.random() * canvas.height;
+                } else if (this.StartPos == 3) {
+                    this.PosX = Math.random() * canvas.width;
+                    this.PosY = canvas.height + 10;
+                } else if (this.StartPos == 4) {
+                    this.PosX = -10;
+                    this.PosY = Math.random() * canvas.height;
+                }
+                this.DirX = mouseX - this.PosX;
+                this.DirY = mouseY - this.PosY;
+                let scalar = Math.sqrt((this.DirX * this.DirX) + (this.DirY * this.DirY));
+                this.DirX = this.DirX / scalar;
+                this.DirY = this.DirY / scalar;
+                this.Speed = Math.random() * 5 + 2;
+                this.Size = 40;
+                this.Shape = (Math.random() < 0.5) ? "rectangle" : "triangle";
+                this.Angle = 0;
+            }
+            Update() {
+                this.PosX += this.DirX * this.Speed;
+                this.PosY += this.DirY * this.Speed;
+                this.Angle += this.Speed * 0.02;
+                if (this.PosY > canvas.height + 15 || this.PosY < -15 || this.PosX > canvas.width + 15 || this.PosX < -15) {
+                    score += 10;
+                    this.StartPos == 4 ? this.StartPos = 1 : this.StartPos++;
+                    if (this.StartPos == 1) {
+                        this.PosX = Math.random() * canvas.width;
+                        this.PosY = -10;
+                    } else if (this.StartPos == 2) {
+                        this.PosX = canvas.width + 10;
+                        this.PosY = Math.random() * canvas.height;
+                    } else if (this.StartPos == 3) {
+                        this.PosX = Math.random() * canvas.width;
+                        this.PosY = canvas.height + 10;
+                    } else if (this.StartPos == 4) {
+                        this.PosX = -10;
+                        this.PosY = Math.random() * canvas.height;
+                    }
+                    this.DirX = mouseX - this.PosX;
+                    this.DirY = mouseY - this.PosY;
+                    let scalar = Math.sqrt((this.DirX * this.DirX) + (this.DirY * this.DirY));
+                    this.DirX = this.DirX / scalar;
+                    this.DirY = this.DirY / scalar;
+                    this.Speed = Math.random() * 5 + 2;
+                    this.Size = 40;
+                    this.Shape = (Math.random() < 0.5) ? "rectangle" : "triangle";
+                    this.Angle = 0;
+                }
+            }
+            Draw() {
+                context.save();
+                context.translate(this.PosX, this.PosY);
+                context.rotate(this.Angle);
+                if (this.Shape == "rectangle") {
+                    context.fillStyle = 'red';
+                    context.fillRect(-this.Size / 2, -this.Size / 2, this.Size, this.Size);
+                } else if (this.Shape == "triangle") {
+                    context.fillStyle = 'blue';
+                    context.beginPath();
+                    context.moveTo(-this.Size / 2, -this.Size / 2);
+                    context.lineTo(this.Size / 2, -this.Size / 2);
+                    context.lineTo(0, this.Size / 2);
+                    context.closePath();
+                    context.fill();
+                }
+                context.restore();
+            }
+        }
+
+        class Item {
+            constructor() {
+                this.PosX = Math.random() * canvas.width;
+                this.PosY = Math.random() * canvas.height;
+                this.DirX = mouseX - this.PosX;
+                this.DirY = mouseY - this.PosY;
+                let scalar = Math.sqrt((this.DirX * this.DirX) + (this.DirY * this.DirY));
+                this.DirX = this.DirX / scalar;
+                this.DirY = this.DirY / scalar;
+                this.Speed = Math.random() * 2 + 1;
+                this.Size = 20;
+            }
+            Update() {
+                this.PosX += this.DirX * this.Speed;
+                this.PosY += this.DirY * this.Speed;
+                if (this.PosY > canvas.height + 15 || this.PosY < -15 || this.PosX > canvas.width + 15 || this.PosX < -15) {
+                    this.PosX = Math.random() * canvas.width;
+                    this.PosY = Math.random() * canvas.height;
+                    this.DirX = mouseX - this.PosX;
+                    this.DirY = mouseY - this.PosY;
+                    let scalar = Math.sqrt((this.DirX * this.DirX) + (this.DirY * this.DirY));
+                    this.DirX = this.DirX / scalar;
+                    this.DirY = this.DirY / scalar;
+                    this.Speed = Math.random() * 2 + 1;
+                }
+            }
+            Draw() {
+                context.beginPath();
+                context.arc(this.PosX, this.PosY, this.Size, 0, 2 * Math.PI);
+                context.fillStyle = 'yellow';
+                context.fill();
+                context.stroke();
+            }
+        }
+
+        function handleCollisions() {
+            for (let i = 0; i < Items.length; i++) {
+                let dx = Player[0].PosX - Items[i].PosX;
+                let dy = Player[0].PosY - Items[i].PosY;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < Player[0].Size + Items[i].Size) {
+                    score += 100;
+                    Player.push(new PlayerBody(Player.length));
+                    Items.splice(i, 1);
+                    i--;
+                    
+                }
+               
+            }
+        }
+
+        function handleObstacleCollisions() {
+            for (let i = 0; i < Obstacles.length; i++) {
+                let dx = Player[0].PosX - Obstacles[i].PosX;
+                let dy = Player[0].PosY - Obstacles[i].PosY;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < Player[0].Size + Obstacles[i].Size) {
+                    Player.splice(1, Player.length - 1);
+                    boostGauge = 100;
+                    Obstacles.splice(i, 1);
+                    i--;
+                    GameOver();
+                clearInterval(obInter);
+                clearInterval(itemInter);
+                clearInterval(mainInterval);
+                }
+            }
+        }
+
+        // 게임 초기화
+        for (count; count < defaultPlayer; count++) {
+            Player.push(new PlayerBody(count));
+        }
+
+        // 장애물 및 아이템 생성 인터벌
+        obInter = setInterval(function () {
+            Obstacles.push(new Obstacle());
+        }, 2000);
+
+        itemInter = setInterval(function () {
+            Items.push(new Item());
+        }, 5000);
+
+        // 메인 게임 루프 인터벌
+        mainInterval = setInterval(gameLoop, 1000 / 60);
+
+        // 마우스 이벤트
+        document.addEventListener("mousemove", function (event) {
+            mouseX = event.clientX - canvas.getBoundingClientRect().left;
+            mouseY = event.clientY - canvas.getBoundingClientRect().top;
+        });
+
+        function drawTopText() {
+            context.font = "20px Arial";
+            context.fillStyle = 'black';
+            context.textAlign = 'left';
+            context.fillText("Snake: " + Player.length, 10, 30);
+            context.fillText("Obstacle: " + Obstacles.length, 10, 60);
+            context.fillText("Score: " + score, 10, 90);
+            context.fillText("Boost: " + boostGauge.toFixed(2) + "%", 10, 120);
+            context.fillText("Time: " + time, canvas.width - 150, 50);
+        }
+
+        function GameOver() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+// Background gradient
+var gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+gradient.addColorStop(0, 'darkblue');
+gradient.addColorStop(1, 'black');
+context.fillStyle = gradient;
+context.fillRect(0, 0, canvas.width, canvas.height);
+
+// Game Over text
+context.font = "70px Exo";
+context.fillStyle = 'white';
+context.textAlign = 'center';
+context.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 120);
+
+// Additional information
+context.font = "40px Exo";
+context.fillStyle = 'lightgreen';
+context.fillText("Time: " + time, canvas.width / 2, canvas.height / 2 + 40);
+context.fillStyle = 'lightblue';
+context.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 + 130);
+        }
+
+        function gameLoop() {
+            timer += 1 / 60;
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = Player.length - 1; i >= 0; i--) {
+                if (i == 0) {
+                    Player[i].Update(mouseX, mouseY, 10, 1);
+                    Player[i].Draw('orangered');
+                } else {
+                    Player[i].Update(Player[i - 1].PosX, Player[i - 1].PosY, 20, speedMu);
+                    Player[i].Draw('orange');
+                }
+            }
+
+            // 장애물 업데이트 및 렌더링
+            for (let i = 0; i < Obstacles.length; i++) {
+                Obstacles[i].Update();
+                Obstacles[i].Draw();
+            }
+            for (let i = 0; i < Items.length; i++) {
+                Items[i].Update();
+                Items[i].Draw();
+            }
+            handleCollisions();
+            handleObstacleCollisions();
+           
+            drawTopText();
+            if (Player.length == 0) {
+                GameOver();
+                clearInterval(obInter);
+                clearInterval(itemInter);
+                clearInterval(mainInterval);
+            }
+        }
+    </script>
+</body>
+
+</html>
